@@ -1,7 +1,9 @@
 package omniglot
 
 import (
+	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"path/filepath"
 
 	"github.com/unixpickle/essentials"
@@ -63,6 +65,36 @@ func (s Set) Augment() Set {
 		for i := 0; i < 4; i++ {
 			res = append(res, x.rotated(i))
 		}
+	}
+	return res
+}
+
+// ByClass sorts the set into different subsets, one per
+// class.
+// A class is a alphabet-character-rotation triple.
+func (s Set) ByClass() []Set {
+	m := map[string]Set{}
+	for _, obj := range s {
+		className := fmt.Sprintf("%s/%s/%d", obj.Sample.Alphabet,
+			obj.Sample.CharName, obj.Rotation)
+		m[className] = append(m[className], obj)
+	}
+	var res []Set
+	for _, set := range m {
+		res = append(res, set)
+	}
+	return res
+}
+
+// Select selects a random n elements from the set.
+func (s Set) Select(n int) Set {
+	if n > len(s) {
+		panic("size out of bounds")
+	}
+	p := rand.Perm(len(s))
+	res := make(Set, n)
+	for i, j := range p[:n] {
+		res[i] = s[j]
 	}
 	return res
 }
