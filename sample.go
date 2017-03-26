@@ -1,6 +1,7 @@
 package omniglot
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -33,7 +34,13 @@ func (s *Sample) Image() (image.Image, error) {
 		return nil, err
 	}
 	defer f.Close()
-	return png.Decode(f)
+	img, err := png.Decode(f)
+	if err != nil {
+		return nil, fmt.Errorf("decode %s: %s", s.Path, err)
+	} else if img.Bounds().Dx() != img.Bounds().Dy() {
+		return nil, fmt.Errorf("decode %s: not square", s.Path)
+	}
+	return img, nil
 }
 
 // AugSample is an augmented sample.
@@ -74,13 +81,7 @@ func (a *AugSample) rotated(rot int) *AugSample {
 }
 
 func transform(img image.Image, angle, transX, transY float64) image.Image {
-	input := make([]float64, 0, ImageSize*ImageSize)
-	for y := 0; y < ImageSize; y++ {
-		for x := 0; x < ImageSize; x++ {
-			r, _, _, _ := img.At(img.Bounds().Min.X+x, img.Bounds().Min.Y+y).RGBA()
-			input = append(input, float64(r)/0xffff)
-		}
-	}
+	input := Tensor(img)
 	sin, cos := math.Sin(angle), math.Cos(angle)
 	out := image.NewGray(image.Rect(0, 0, ImageSize, ImageSize))
 	for y := 0; y < ImageSize; y++ {
