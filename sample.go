@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"image/png"
 	"math"
+	"math/rand"
 	"os"
 )
 
@@ -47,12 +48,23 @@ type AugSample struct {
 }
 
 // Image reads the image file and rotates it accordingly.
-func (a *AugSample) Image() (image.Image, error) {
+//
+// If augment is true, then extra data augmentation is
+// applied.
+// Either way, the image is rotated according to
+// a.Rotation.
+func (a *AugSample) Image(augment bool) (image.Image, error) {
 	raw, err := a.Sample.Image()
 	if err != nil {
 		return nil, err
 	}
-	return rotate(raw, float64(a.Rotation)*math.Pi/2), nil
+	var transX, transY float64
+	angle := float64(a.Rotation) * math.Pi / 2
+	if augment {
+		transX, transY = randomTranslation(), randomTranslation()
+		angle += rand.Float64() - 0.5
+	}
+	return transform(raw, angle, transX, transY), nil
 }
 
 func (a *AugSample) rotated(rot int) *AugSample {
@@ -61,7 +73,7 @@ func (a *AugSample) rotated(rot int) *AugSample {
 	return &s
 }
 
-func rotate(img image.Image, angle float64) image.Image {
+func transform(img image.Image, angle, transX, transY float64) image.Image {
 	input := make([]float64, 0, ImageSize*ImageSize)
 	for y := 0; y < ImageSize; y++ {
 		for x := 0; x < ImageSize; x++ {
@@ -74,6 +86,8 @@ func rotate(img image.Image, angle float64) image.Image {
 	for y := 0; y < ImageSize; y++ {
 		for x := 0; x < ImageSize; x++ {
 			newX, newY := rotateCoord(x, y, sin, cos)
+			newX -= transX
+			newY -= transY
 			newColor := int(interpolate(input, newX, newY) * 0x100)
 			if newColor == 0x100 {
 				newColor = 0xff
@@ -106,4 +120,8 @@ func pixelAt(buf []float64, x, y int) float64 {
 		return 1
 	}
 	return buf[x+y*ImageSize]
+}
+
+func randomTranslation() float64 {
+	return rand.Float64()*6 - 3
 }
