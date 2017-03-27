@@ -75,7 +75,7 @@ func (a *AugSample) Image(augment bool, outSize int) (image.Image, error) {
 	angle := float64(a.Rotation) * math.Pi / 2
 	if augment {
 		transX, transY = randomTranslation(), randomTranslation()
-		angle += rand.Float64() - 0.5
+		angle += (rand.Float64() - 0.5) * (math.Pi / 8)
 	}
 	return transform(raw, outSize, angle, transX, transY), nil
 }
@@ -131,5 +131,5 @@ func pixelAt(buf []float64, x, y int) float64 {
 }
 
 func randomTranslation() float64 {
-	return rand.Float64()*6 - 3
+	return rand.Float64()*20 - 10
 }
