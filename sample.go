@@ -60,7 +60,13 @@ type AugSample struct {
 // applied.
 // Either way, the image is rotated according to
 // a.Rotation.
-func (a *AugSample) Image(augment bool) (image.Image, error) {
+//
+// If outSize is non-zero, then the sample is scaled to
+// outSize by outSize pixels.
+func (a *AugSample) Image(augment bool, outSize int) (image.Image, error) {
+	if outSize == 0 {
+		outSize = ImageSize
+	}
 	raw, err := a.Sample.Image()
 	if err != nil {
 		return nil, err
@@ -71,7 +77,7 @@ func (a *AugSample) Image(augment bool) (image.Image, error) {
 		transX, transY = randomTranslation(), randomTranslation()
 		angle += rand.Float64() - 0.5
 	}
-	return transform(raw, angle, transX, transY), nil
+	return transform(raw, outSize, angle, transX, transY), nil
 }
 
 func (a *AugSample) rotated(rot int) *AugSample {
@@ -80,13 +86,14 @@ func (a *AugSample) rotated(rot int) *AugSample {
 	return &s
 }
 
-func transform(img image.Image, angle, transX, transY float64) image.Image {
+func transform(img image.Image, outSize int, angle, transX, transY float64) image.Image {
 	input := Tensor(img)
 	sin, cos := math.Sin(angle), math.Cos(angle)
-	out := image.NewGray(image.Rect(0, 0, ImageSize, ImageSize))
-	for y := 0; y < ImageSize; y++ {
-		for x := 0; x < ImageSize; x++ {
-			newX, newY := rotateCoord(x, y, sin, cos)
+	scaler := (ImageSize - 1) / float64(outSize-1)
+	out := image.NewGray(image.Rect(0, 0, outSize, outSize))
+	for y := 0; y < outSize; y++ {
+		for x := 0; x < outSize; x++ {
+			newX, newY := rotateCoord(float64(x)*scaler, float64(y)*scaler, sin, cos)
 			newX -= transX
 			newY -= transY
 			newColor := int(interpolate(input, newX, newY) * 0x100)
@@ -99,7 +106,7 @@ func transform(img image.Image, angle, transX, transY float64) image.Image {
 	return out
 }
 
-func rotateCoord(x, y int, sin, cos float64) (float64, float64) {
+func rotateCoord(x, y float64, sin, cos float64) (float64, float64) {
 	cx := float64(x) - ImageSize/2
 	cy := float64(y) - ImageSize/2
 	return ImageSize/2 + cos*cx - sin*cy, ImageSize/2 + sin*cx + cos*cy
