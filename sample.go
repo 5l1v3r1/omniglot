@@ -8,6 +8,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"sync"
 )
 
 const ImageSize = 105
@@ -25,22 +26,30 @@ type Sample struct {
 	// Path is the path to the image for this sample, such as
 	// "/data/Early_Aramaic/character19/0269_02.png".
 	Path string
+
+	imageLock sync.Mutex
+	image     image.Image
 }
 
 // Image reads the sample's image file.
 func (s *Sample) Image() (image.Image, error) {
+	s.imageLock.Lock()
+	defer s.imageLock.Unlock()
+	if s.image != nil {
+		return s.image, nil
+	}
 	f, err := os.Open(s.Path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-	img, err := png.Decode(f)
+	s.image, err = png.Decode(f)
 	if err != nil {
 		return nil, fmt.Errorf("decode %s: %s", s.Path, err)
-	} else if img.Bounds().Dx() != img.Bounds().Dy() {
+	} else if s.image.Bounds().Dx() != s.image.Bounds().Dy() {
 		return nil, fmt.Errorf("decode %s: not square", s.Path)
 	}
-	return img, nil
+	return s.image, nil
 }
 
 // AugSample is an augmented sample.
