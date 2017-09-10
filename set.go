@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"path/filepath"
+	"sort"
 
 	"github.com/unixpickle/essentials"
 )
@@ -71,17 +72,27 @@ func (s Set) Augment() Set {
 
 // ByClass sorts the set into different subsets, one per
 // class.
-// A class is a alphabet-character-rotation triple.
+// A class is an alphabet-character-rotation triple.
+//
+// The resulting classes are ordered deterministically
+// regardless of the order of s.
+// Within each class, the samples are ordered the same way
+// that they are ordered in s.
 func (s Set) ByClass() []Set {
-	m := map[string]Set{}
+	classByName := map[string]Set{}
+	classNames := []string{}
 	for _, obj := range s {
 		className := fmt.Sprintf("%s/%s/%d", obj.Sample.Alphabet,
 			obj.Sample.CharName, obj.Rotation)
-		m[className] = append(m[className], obj)
+		if classByName[className] == nil {
+			classNames = append(classNames, className)
+		}
+		classByName[className] = append(classByName[className], obj)
 	}
+	sort.Strings(classNames)
 	var res []Set
-	for _, set := range m {
-		res = append(res, set)
+	for _, name := range classNames {
+		res = append(res, classByName[name])
 	}
 	return res
 }
